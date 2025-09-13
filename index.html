@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Report Generator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    @keyframes dots {
+      0%, 20% { color: transparent; }
+      40% { color: currentColor; }
+      100% { color: transparent; }
+    }
+    .loading-dots span:nth-child(1) { animation-delay: 0s; }
+    .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+    .ai-loading {
+      animation: spin 2s linear infinite;
+    }
+    .ai-pulse {
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+  </style>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+    }
+  </script>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-300 min-h-screen">
+  <!-- API Key Modal -->
+  <div id="apiModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full mx-4">
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">OpenRouter API Configuration</h3>
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">API Key</label>
+        <input 
+          type="password" 
+          id="apiKeyInput" 
+          placeholder="Enter your OpenRouter API key"
+          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+        >
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Your API key is stored locally and never sent to our servers.</p>
+      </div>
+      <div class="flex gap-2">
+        <button 
+          onclick="saveApiKey()" 
+          class="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
+        >
+          Save
+        </button>
+        <button 
+          onclick="closeApiModal()" 
+          class="flex-1 px-4 py-2 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-300 rounded-lg font-medium transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="container mx-auto px-4 py-8 max-w-7xl">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-8">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Daily Report Generator</h1>
+        <p class="text-gray-600 dark:text-gray-400 mt-1">Create professional daily reports with AI assistance</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button 
+          onclick="showApiModal()" 
+          class="p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          title="Configure AI Assistant"
+        >
+          <svg class="w-5 h-5 text-gray-700 dark:text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"></path>
+          </svg>
+        </button>
+        <button 
+          id="themeToggle" 
+          class="p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        >
+          <svg id="sunIcon" class="w-5 h-5 text-gray-700 dark:text-gray-300 hidden dark:block" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"></path>
+          </svg>
+          <svg id="moonIcon" class="w-5 h-5 text-gray-700 dark:text-gray-300 block dark:hidden" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="grid lg:grid-cols-2 gap-8">
+      <!-- Input Section -->
+      <div class="space-y-6">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <!-- Date Input -->
+          <div class="mb-6">
+            <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Report Date</label>
+            <input 
+              type="date" 
+              id="reportDate" 
+              class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-colors"
+            >
+          </div>
+
+          <!-- Today's Tasks -->
+          <div class="mb-6">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Tasks Completed</h2>
+              <div class="flex items-center gap-2">
+                <button 
+                  onclick="addTask('todayTasks', 'Enter completed task...')" 
+                  class="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                  title="Add Task"
+                >
+                  <i class="fas fa-plus text-sm"></i>
+                </button>
+                <span class="text-sm text-gray-500 dark:text-gray-400" id="todayCount">0 tasks</span>
+                <div class="relative">
+                  <button 
+                    onclick="toggleAIMenu('todayAI')" 
+                    class="p-2 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors relative"
+                    title="AI Assistant"
+                    id="todayAIBtn"
+                  >
+                    <i class="fas fa-robot text-sm" id="todayAIIcon"></i>
+                    <div class="absolute inset-0 flex items-center justify-center hidden" id="todayAILoading">
+                      <i class="fas fa-spinner text-sm ai-loading text-purple-600"></i>
+                    </div>
+                  </button>
+                  <div id="todayAI" class="absolute right-0 top-full mt-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg z-10 hidden min-w-[150px]">
+                    <button onclick="rewriteTasks('todayTasks', 'formal')" class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-t-lg">Formal</button>
+                    <button onclick="rewriteTasks('todayTasks', 'casual')" class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">Casual</button>
+                    <button onclick="rewriteTasks('todayTasks', 'professional')" class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">Professional</button>
+                    <button onclick="rewriteTasks('todayTasks', 'concise')" class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">Concise</button>
+                    <button onclick="rewriteTasks('todayTasks', 'detailed')" class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-b-lg">Detailed</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div id="todayTasks" class="space-y-3">
+              <div class="flex gap-2 items-center">
+                <input 
+                  type="text" 
+                  placeholder="Enter completed task..." 
+                  class="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-colors"
+                >
+                <button 
+                  onclick="removeTask(this)" 
+                  class="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                >
+                  <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Next Day Plan -->
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Next Day Plan</h2>
+              <div class="flex items-center gap-2">
+                <button 
+                  onclick="addTask('nextTasks', 'Enter planned task...')" 
+                  class="p-2 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
+                  title="Add Task"
+                >
+                  <i class="fas fa-plus text-sm"></i>
+                </button>
+                <span class="text-sm text-gray-500 dark:text-gray-400" id="nextCount">0 tasks</span>
+                <div class="relative">
+                  <button 
+                    onclick="toggleAIMenu('nextAI')" 
+                    class="p-2 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors relative"
+                    title="AI Assistant"
+                    id="nextAIBtn"
+                  >
+                    <i class="fas fa-robot text-sm" id="nextAIIcon"></i>
+                    <div class="absolute inset-0 flex items-center justify-center hidden" id="nextAILoading">
+                      <i class="fas fa-spinner text-sm ai-loading text-purple-600"></i>
+                    </div>
+                  </button>
+                  <div id="nextAI" class="absolute right-0 top-full mt-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg z-10 hidden min-w-[150px]">
+                    <button onclick="rewriteTasks('nextTasks', 'formal')" class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-t-lg">Formal</button>
+                    <button onclick="rewriteTasks('nextTasks', 'casual')" class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">Casual</button>
+                    <button onclick="rewriteTasks('nextTasks', 'professional')" class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">Professional</button>
+                    <button onclick="rewriteTasks('nextTasks', 'concise')" class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">Concise</button>
+                    <button onclick="rewriteTasks('nextTasks', 'detailed')" class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-b-lg">Detailed</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Next Day Date Input -->
+            <div class="mb-4">
+              <div class="flex items-center gap-3">
+                <label class="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Plan Date:</label>
+                <input 
+                  type="date" 
+                  id="nextDayDate" 
+                  class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-colors text-sm"
+                >
+                <button 
+                  onclick="setNextDayToTomorrow()" 
+                  class="px-3 py-2 bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 text-green-700 dark:text-green-300 rounded-lg font-medium transition-colors text-sm whitespace-nowrap"
+                >
+                  Tomorrow
+                </button>
+              </div>
+            </div>
+
+            <div id="nextTasks" class="space-y-3">
+              <div class="flex gap-2 items-center">
+                <input 
+                  type="text" 
+                  placeholder="Enter planned task..." 
+                  class="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-colors"
+                >
+                <button 
+                  onclick="removeTask(this)" 
+                  class="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                >
+                  <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Preview Section -->
+      <div class="space-y-6">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Live Preview</h2>
+            <div class="flex items-center gap-2">
+              <button 
+                onclick="clearAllTasks()" 
+                class="flex items-center gap-2 px-4 py-2 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-700 dark:text-red-300 rounded-lg font-medium transition-colors"
+              >
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" clip-rule="evenodd"></path>
+                  <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3l1.5 1.5a1 1 0 01-1.414 1.414L10 10.414V6a1 1 0 011-1z" clip-rule="evenodd"></path>
+                  <path fill-rule="evenodd" d="M3 5a2 2 0 012-2h1a1 1 0 010 2H5v11a2 2 0 002 2h6a2 2 0 002-2V5h-1a1 1 0 110-2h1a2 2 0 012 2v11a4 4 0 01-4 4H7a4 4 0 01-4-4V5z" clip-rule="evenodd"></path>
+                </svg>
+                Clear All
+              </button>
+              <button 
+                onclick="copyReport()" 
+                id="copyButton"
+                class="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium transition-colors"
+              >
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"></path>
+                  <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"></path>
+                </svg>
+                <span id="copyText">Copy Report</span>
+              </button>
+            </div>
+          </div>
+          <div 
+            id="livePreview" 
+            class="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-6 font-mono text-sm whitespace-pre-wrap text-gray-800 dark:text-gray-200 min-h-[300px]"
+          >
+            <!-- Preview content will be generated here -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Theme toggle functionality with localStorage
+    const themeToggle = document.getElementById('themeToggle');
+    const html = document.documentElement;
+    
+    // Check for saved theme or default to light mode
+    const savedTheme = localStorage.getItem('dailyReport_theme') || 'light';
+    html.classList.toggle('dark', savedTheme === 'dark');
+    
+    themeToggle.addEventListener('click', () => {
+      html.classList.toggle('dark');
+      const currentTheme = html.classList.contains('dark') ? 'dark' : 'light';
+      localStorage.setItem('dailyReport_theme', currentTheme);
+    });
+
+    // Set default dates
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const formatDateForInput = (date) => {
+      const yyyy = date.getFullYear();
+      const mm = String(date.getMonth() + 1).padStart(2, '0');
+      const dd = String(date.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    };
+
+    // Load saved dates or use defaults
+    document.getElementById('reportDate').value = localStorage.getItem('dailyReport_reportDate') || formatDateForInput(today);
+    document.getElementById('nextDayDate').value = localStorage.getItem('dailyReport_nextDayDate') || formatDateForInput(tomorrow);
+
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+                        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    function formatDateForDisplay(dateString) {
+      const date = new Date(dateString);
+      return `${String(date.getDate()).padStart(2,'0')}-${monthNames[date.getMonth()]}-${date.getFullYear()}`;
+    }
+
+    function setNextDayToTomorrow() {
+      const reportDate = new Date(document.getElementById('reportDate').value);
+      const nextDay = new Date(reportDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+      document.getElementById('nextDayDate').value = formatDateForInput(nextDay);
+      saveDates();
+      updatePreview();
+    }
+
+    function saveDates() {
+      localStorage.setItem('dailyReport_reportDate', document.getElementById('reportDate').value);
+      localStorage.setItem('dailyReport_nextDayDate', document.getElementById('nextDayDate').value);
+    }
+
+    function saveTasks() {
+      const todayTasks = Array.from(document.querySelectorAll('#todayTasks input')).map(input => input.value);
+      const nextTasks = Array.from(document.querySelectorAll('#nextTasks input')).map(input => input.value);
+      
+      localStorage.setItem('dailyReport_todayTasks', JSON.stringify(todayTasks));
+      localStorage.setItem('dailyReport_nextTasks', JSON.stringify(nextTasks));
+    }
+
+    function loadTasks() {
+      const todayTasks = JSON.parse(localStorage.getItem('dailyReport_todayTasks') || '[""]');
+      const nextTasks = JSON.parse(localStorage.getItem('dailyReport_nextTasks') || '[""]');
+      
+      // Clear existing tasks
+      document.getElementById('todayTasks').innerHTML = '';
+      document.getElementById('nextTasks').innerHTML = '';
+      
+      // Load today's tasks
+      todayTasks.forEach(task => {
+        addTaskWithValue('todayTasks', 'Enter completed task...', task);
+      });
+      
+      // Load next tasks
+      nextTasks.forEach(task => {
+        addTaskWithValue('nextTasks', 'Enter planned task...', task);
+      });
+      
+      updateCounts();
+    }
+
+    function addTask(listId, placeholder) {
+      addTaskWithValue(listId, placeholder, '');
+    }
+
+    function addTaskWithValue(listId, placeholder, value) {
+      const container = document.getElementById(listId);
+      const div = document.createElement('div');
+      div.className = "flex gap-2 items-center";
+      div.innerHTML = `
+        <input 
+          type="text" 
+          placeholder="${placeholder}" 
+          value="${value}"
+          class="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-${listId === 'todayTasks' ? 'blue' : 'green'}-500 focus:border-transparent outline-none transition-colors"
+          oninput="saveTasks(); updatePreview()"
+        >
+        <button 
+          onclick="removeTask(this)" 
+          class="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+        >
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+          </svg>
+        </button>
+      `;
+      container.appendChild(div);
+      updateCounts();
+      updatePreview();
+      saveTasks();
+    }
+
+    function removeTask(button) {
+      button.parentElement.remove();
+      updateCounts();
+      updatePreview();
+      saveTasks();
+    }
+
+    function clearAllTasks() {
+      if (confirm('Are you sure you want to clear all tasks? This will also clear your saved data.')) {
+        localStorage.removeItem('dailyReport_todayTasks');
+        localStorage.removeItem('dailyReport_nextTasks');
+        
+        document.getElementById('todayTasks').innerHTML = '';
+        document.getElementById('nextTasks').innerHTML = '';
+        
+        addTask('todayTasks', 'Enter completed task...');
+        addTask('nextTasks', 'Enter planned task...');
+        
+        updateCounts();
+        updatePreview();
+      }
+    }
+
+    function updateCounts() {
+      const todayInputs = document.querySelectorAll('#todayTasks input');
+      const nextInputs = document.querySelectorAll('#nextTasks input');
+      
+      document.getElementById('todayCount').textContent = `${todayInputs.length} task${todayInputs.length !== 1 ? 's' : ''}`;
+      document.getElementById('nextCount').textContent = `${nextInputs.length} task${nextInputs.length !== 1 ? 's' : ''}`;
+    }
+
+    function updatePreview() {
+      const reportDateValue = document.getElementById('reportDate').value;
+      const nextDayDateValue = document.getElementById('nextDayDate').value;
+      
+      const formattedReportDate = formatDateForDisplay(reportDateValue);
+      const formattedNextDayDate = formatDateForDisplay(nextDayDateValue);
+      
+      const todayTasks = Array.from(document.querySelectorAll('#todayTasks input'))
+        .map(input => input.value.trim())
+        .filter(Boolean);
+      
+      const nextTasks = Array.from(document.querySelectorAll('#nextTasks input'))
+        .map(input => input.value.trim())
+        .filter(Boolean);
+
+      let report = `Daily Report – ${formattedReportDate}\n\nTasks Completed\n`;
+      
+      if (todayTasks.length === 0) {
+        report += `- No tasks completed\n`;
+      } else {
+        todayTasks.forEach(task => report += `- ${task}\n`);
+      }
+      
+      report += `\nNext Day Plan – ${formattedNextDayDate}\n`;
+      
+      if (nextTasks.length === 0) {
+        report += `- No tasks planned\n`;
+      } else {
+        nextTasks.forEach(task => report += `- ${task}\n`);
+      }
+
+      document.getElementById('livePreview').textContent = report;
+    }
+
+    async function copyReport() {
+      const report = document.getElementById('livePreview').textContent;
+      const button = document.getElementById('copyButton');
+      const text = document.getElementById('copyText');
+      
+      try {
+        await navigator.clipboard.writeText(report);
+        text.textContent = 'Copied!';
+        button.classList.remove('bg-gray-100', 'dark:bg-gray-700', 'hover:bg-gray-200', 'dark:hover:bg-gray-600');
+        button.classList.add('bg-green-100', 'dark:bg-green-900', 'text-green-700', 'dark:text-green-300');
+        
+        setTimeout(() => {
+          text.textContent = 'Copy Report';
+          button.classList.remove('bg-green-100', 'dark:bg-green-900', 'text-green-700', 'dark:text-green-300');
+          button.classList.add('bg-gray-100', 'dark:bg-gray-700', 'hover:bg-gray-200', 'dark:hover:bg-gray-600', 'text-gray-700', 'dark:text-gray-300');
+        }, 2000);
+      } catch (err) {
+        text.textContent = 'Failed to copy';
+        setTimeout(() => {
+          text.textContent = 'Copy Report';
+        }, 2000);
+      }
+    }
+
+    // OpenRouter API Integration
+    function showApiModal() {
+      const apiKey = localStorage.getItem('dailyReport_apiKey') || '';
+      document.getElementById('apiKeyInput').value = apiKey;
+      document.getElementById('apiModal').classList.remove('hidden');
+    }
+
+    function closeApiModal() {
+      document.getElementById('apiModal').classList.add('hidden');
+    }
+
+    function saveApiKey() {
+      const apiKey = document.getElementById('apiKeyInput').value.trim();
+      if (apiKey) {
+        localStorage.setItem('dailyReport_apiKey', apiKey);
+        closeApiModal();
+      }
+    }
+
+    function toggleAIMenu(menuId) {
+      const menu = document.getElementById(menuId);
+      const allMenus = document.querySelectorAll('[id$="AI"]');
+      
+      // Close other menus
+      allMenus.forEach(m => {
+        if (m.id !== menuId) {
+          m.classList.add('hidden');
+        }
+      });
+      
+      menu.classList.toggle('hidden');
+    }
+
+    // Close AI menus when clicking outside
+    document.addEventListener('click', (e) => {
+      const isAIButton = e.target.closest('[onclick*="toggleAIMenu"]');
+      const isAIMenu = e.target.closest('[id$="AI"]');
+      
+      if (!isAIButton && !isAIMenu) {
+        document.querySelectorAll('[id$="AI"]').forEach(menu => {
+          menu.classList.add('hidden');
+        });
+      }
+    });
+
+    async function rewriteTasks(containerId, tone) {
+      const apiKey = localStorage.getItem('dailyReport_apiKey');
+      if (!apiKey) {
+        alert('Please configure your OpenRouter API key first by clicking the AI configuration button.');
+        return;
+      }
+
+      const container = document.getElementById(containerId);
+      const inputs = container.querySelectorAll('input');
+      const tasks = Array.from(inputs).map(input => input.value.trim()).filter(Boolean);
+      
+      if (tasks.length === 0) {
+        alert('Please add some tasks first before using AI assistance.');
+        return;
+      }
+
+      // Close the AI menu
+      document.getElementById(containerId === 'todayTasks' ? 'todayAI' : 'nextAI').classList.add('hidden');
+
+      // Show loading state
+      const buttonId = containerId === 'todayTasks' ? 'todayAIBtn' : 'nextAIBtn';
+      const iconId = containerId === 'todayTasks' ? 'todayAIIcon' : 'nextAIIcon';
+      const loadingId = containerId === 'todayTasks' ? 'todayAILoading' : 'nextAILoading';
+      
+      const button = document.getElementById(buttonId);
+      const icon = document.getElementById(iconId);
+      const loading = document.getElementById(loadingId);
+      
+      // Show loading animation
+      icon.classList.add('hidden');
+      loading.classList.remove('hidden');
+      button.disabled = true;
+      button.classList.add('ai-pulse');
+      button.title = 'AI is rewriting tasks...';
+      
+      try {
+        const prompt = `Please rewrite the following tasks in a ${tone} tone. Keep the same meaning but adjust the language style. Return only the rewritten tasks, one per line, without any additional formatting or explanations:
+
+${tasks.join('\n')}`;
+
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': window.location.href,
+            'X-Title': 'Daily Report Generator'
+          },
+          body: JSON.stringify({
+            model: 'qwen/qwen-2.5-coder-32b-instruct:free',
+            messages: [
+              {
+                role: 'user',
+                content: prompt
+              }
+            ],
+            max_tokens: 1000,
+            temperature: 0.7
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(`API request failed: ${response.status} - ${errorData.error?.message || response.statusText}`);
+        }
+
+        const data = await response.json();
+        const rewrittenTasks = data.choices[0].message.content.trim().split('\n').filter(line => line.trim());
+
+        // Update the inputs with rewritten tasks
+        inputs.forEach((input, index) => {
+          if (index < rewrittenTasks.length) {
+            input.value = rewrittenTasks[index].replace(/^-\s*/, '').trim();
+          }
+        });
+
+        // If there are more rewritten tasks than inputs, add new inputs
+        for (let i = inputs.length; i < rewrittenTasks.length; i++) {
+          const placeholder = containerId === 'todayTasks' ? 'Enter completed task...' : 'Enter planned task...';
+          addTaskWithValue(containerId, placeholder, rewrittenTasks[i].replace(/^-\s*/, '').trim());
+        }
+
+        saveTasks();
+        updatePreview();
+
+      } catch (error) {
+        console.error('Error rewriting tasks:', error);
+        let errorMessage = 'Failed to rewrite tasks. ';
+        if (error.message.includes('401')) {
+          errorMessage += 'Invalid API key. Please check your OpenRouter API key.';
+        } else if (error.message.includes('429')) {
+          errorMessage += 'Rate limit exceeded. Please try again later.';
+        } else if (error.message.includes('400')) {
+          errorMessage += 'Invalid request. The model may not be available.';
+        } else {
+          errorMessage += 'Please check your API key and internet connection.';
+        }
+        alert(errorMessage);
+      } finally {
+        // Hide loading animation
+        loading.classList.add('hidden');
+        icon.classList.remove('hidden');
+        button.disabled = false;
+        button.classList.remove('ai-pulse');
+        button.title = 'AI Assistant';
+      }
+    }
+
+    // Add event listeners for live preview and localStorage
+    document.getElementById('reportDate').addEventListener('change', () => {
+      saveDates();
+      updatePreview();
+    });
+    
+    document.getElementById('nextDayDate').addEventListener('change', () => {
+      saveDates();
+      updatePreview();
+    });
+
+    // Initialize the application
+    function initializeApp() {
+      loadTasks();
+      updateCounts();
+      updatePreview();
+    }
+
+    // Start the app when DOM is loaded
+    document.addEventListener('DOMContentLoaded', initializeApp);
+    
+    // Also start immediately if DOM is already loaded
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initializeApp);
+    } else {
+      initializeApp();
+    }
+  </script>
+</body>
+</html>
